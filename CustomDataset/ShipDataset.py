@@ -4,8 +4,9 @@ import numpy as np
 from typing import Any, Callable, Iterable, Optional, Tuple, TypeVar, cast
 from torch.utils.data import Dataset
 from PIL import Image
+from CustomDataset.VisionDataset import VisionDataset
 
-class ShipDataset(Dataset):
+class ShipDataset(VisionDataset):
 
     base_folder = "ship_data"
     splits = ("train", "train+unlabeled", "unlabeled", "test")
@@ -17,6 +18,7 @@ class ShipDataset(Dataset):
         l_img_pc: int = 0,
         ul_img_pc: int = 0,
         transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
     ) -> None:
         """
         Args:
@@ -29,12 +31,11 @@ class ShipDataset(Dataset):
         Return:
             None
         """
+        super().__init__(root, transform=transform, target_transform=target_transform)
         self.root = root
         self.split = split
         assert split in self.splits, "Invalid split type"
 
-
-        self.transform = transform
         if self.split == "train+unlabeled":
             self.data, self.labels = self.__loadfile(l_img_pc, True)
             unlabeled_data, _ = self.__loadfile(ul_img_pc, False)
@@ -53,16 +54,36 @@ class ShipDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        img_path = self.data.iloc[index][0]
-        #print(f"+ __getitem__() -> {img_path}")
-        image = Image.open(img_path)
-        y_label = int(self.data.iloc[index, 1])
+        # TODO Prototype
+        target: Optional[int]
+        if self.labels is not None:
+            img_path, target = self.data.iloc[index][0], int(self.labels[index])
+        else:
+            img_path, target = self.data.iloc[index][0], None
 
-        if self.transform:
-            #print(f"+ Transforming image")
-            aug_images = self.transform(image)
+        img = Image.open(img_path).convert('RGB')
+
+        if self.transform is not None:
+            img = self.transform(img)
         
-        return (aug_images, y_label)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target
+
+
+
+        # # TO FIX, See img, target
+        # img_path = self.data.iloc[index][0]
+        # #print(f"+ __getitem__() -> {img_path}")
+        # image = Image.open(img_path)
+        # y_label = int(self.data.iloc[index, 1])
+
+        # if self.transform:
+        #     #print(f"+ Transforming image")
+        #     aug_images = self.transform(image)
+        
+        # return (aug_images, y_label)
 
     # TODO Set start index to prevent overlap
     def __loadfile(self, img_pc:int=0, require_label:bool=True):
