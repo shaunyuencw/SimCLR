@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 
 class ShipDataset(VisionDataset):
 
-    base_folder = "ship_spotting"
+    base_folder = "mini_ship_spotting_single"
     ds_types = ("pt_unlabeled", "pt_labeled", "ft_train", "ft_test")
     methods = ("self-supervised", "supervised", "unsupervised")
 
@@ -144,9 +144,11 @@ class ShipDataset(VisionDataset):
                 pt_unlabeled, pt_labeled = split_two(pt_lst, [train_ratio, 1-train_ratio])
                 target_list = pt_unlabeled if self.ds_type == "pt_unlabeled" else pt_labeled
                 
-            elif self.ds_type in ft_types:
+            elif self.ds_type in ft_types: # Change to multiple of 10
                 ft_train, ft_test = split_two(ft_lst, [0.8, 0.2])
-                target_list = ft_train if self.ds_type == "ft_train" else ft_test
+                size = len(ft_train) - (len(ft_train)% 10) if self.ds_type == "ft_train" else len(ft_test) - (len(ft_test)% 10)
+                
+                target_list = ft_train[:size] if self.ds_type == "ft_train" else ft_test[:size]
     
             # print(f"Taking {len(target_list)} images...")
             # print(f"Processing images...")
